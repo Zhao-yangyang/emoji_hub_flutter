@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class Category {
   final int? id;
   final String name;
-  final IconData icon;
+  final int icon;
   final int sortOrder;
   final DateTime createTime;
   final DateTime updateTime;
@@ -24,7 +24,7 @@ class Category {
     return Category(
       id: json['id'] as int?,
       name: json['name'] as String,
-      icon: IconData(json['icon'] as int, fontFamily: 'MaterialIcons'),
+      icon: json['icon'] as int,
       sortOrder: json['sort_order'] as int,
       createTime: DateTime.parse(json['create_time'] as String),
       updateTime: DateTime.parse(json['update_time'] as String),
@@ -36,7 +36,7 @@ class Category {
     return {
       'id': id,
       'name': name,
-      'icon': icon.codePoint,
+      'icon': icon,
       'sort_order': sortOrder,
       'create_time': createTime.toIso8601String(),
       'update_time': updateTime.toIso8601String(),
@@ -47,7 +47,7 @@ class Category {
   Category copyWith({
     int? id,
     String? name,
-    IconData? icon,
+    int? icon,
     int? sortOrder,
     DateTime? createTime,
     DateTime? updateTime,

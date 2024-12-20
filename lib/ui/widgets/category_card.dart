@@ -1,25 +1,24 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
+import '../../data/models/category.dart';
 
 class CategoryCard extends StatelessWidget {
-  final String name;
-  final IconData icon;
-  final VoidCallback onTap;
+  final Category category;
   final bool isSelected;
+  final VoidCallback? onTap;
 
   const CategoryCard({
     super.key,
-    required this.name,
-    required this.icon,
-    required this.onTap,
+    required this.category,
     this.isSelected = false,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Hero(
-      tag: 'category_$name',
+      tag: 'category_${category.name}',
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -40,10 +39,12 @@ class CategoryCard extends StatelessWidget {
             child: AnimatedContainer(
               duration: AppConstants.animationDuration,
               width: 100,
+              height: 80,
               margin: const EdgeInsets.symmetric(
                 horizontal: AppConstants.spacing / 2,
-                vertical: AppConstants.spacing,
+                vertical: AppConstants.spacing / 2,
               ),
+              padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
@@ -76,13 +77,13 @@ class CategoryCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    icon,
+                    IconData(category.icon, fontFamily: 'MaterialIcons'),
                     color: isSelected ? AppTheme.accent : AppTheme.textPrimary,
                     size: AppConstants.iconSize * 1.5,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    name,
+                    category.name,
                     style: TextStyle(
                       color:
                           isSelected ? AppTheme.accent : AppTheme.textPrimary,

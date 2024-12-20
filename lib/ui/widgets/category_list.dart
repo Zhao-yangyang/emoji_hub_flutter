@@ -16,42 +16,55 @@ class CategoryList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final categoriesAsync = ref.watch(categoriesProvider);
+    final selectedId = ref.watch(selectedCategoryIdProvider);
+    final defaultCategoryAsync = ref.watch(defaultCategoryProvider);
 
-    return SizedBox(
-      height: 120,
-      child: categoriesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
-        data: (categories) => ReorderableListView(
+    return categoriesAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, stack) => Center(child: Text('Error: $err')),
+      data: (categories) => SizedBox(
+        height: 100,
+        child: ListView.builder(
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppConstants.spacing / 2,
-          ),
-          onReorder: (oldIndex, newIndex) async {
-            await _updateCategoryOrder(
-                context, ref, categories, oldIndex, newIndex);
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          itemCount: categories.length + 2,
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return defaultCategoryAsync.when(
+                loading: () => const SizedBox(),
+                error: (err, stack) => const SizedBox(),
+                data: (defaultCategory) => CategoryCard(
+                  category: defaultCategory,
+                  isSelected: selectedId == defaultCategory.id,
+                  onTap: () => ref
+                      .read(selectedCategoryIdProvider.notifier)
+                      .state = defaultCategory.id,
+                ),
+              );
+            }
+
+            if (index == categories.length + 1) {
+              return CategoryCard(
+                category: Category(
+                  name: '添加分类',
+                  icon: Icons.add_rounded.codePoint,
+                  sortOrder: -1,
+                ),
+                isSelected: false,
+                onTap: () => _showAddCategoryDialog(context, ref),
+              );
+            }
+
+            final category = categories[index - 1];
+            if (category.name == '全部') return const SizedBox();
+
+            return CategoryCard(
+              category: category,
+              isSelected: selectedId == category.id,
+              onTap: () => ref.read(selectedCategoryIdProvider.notifier).state =
+                  category.id,
+            );
           },
-          children: [
-            for (final category in categories)
-              CategoryCard(
-                key: ValueKey(category.id),
-                name: category.name,
-                icon: category.icon,
-                isSelected:
-                    ref.watch(selectedCategoryIdProvider) == category.id,
-                onTap: () {
-                  ref.read(selectedCategoryIdProvider.notifier).state =
-                      category.id;
-                },
-              ),
-            CategoryCard(
-              key: const ValueKey('add'),
-              name: '添加分类',
-              icon: Icons.add_rounded,
-              isSelected: false,
-              onTap: () => _showAddCategoryDialog(context, ref),
-            ),
-          ],
         ),
       ),
     );

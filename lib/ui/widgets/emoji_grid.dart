@@ -21,12 +21,12 @@ class EmojiGrid extends ConsumerWidget {
           ? const Center(child: Text('暂无表情，请先选择分类并导入表情'))
           : GridView.builder(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                childAspectRatio: 0.8,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
+                crossAxisCount: 3,
+                childAspectRatio: 1,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
               ),
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(12),
               itemCount: emojis.length,
               itemBuilder: (context, index) {
                 final emoji = emojis[index];
