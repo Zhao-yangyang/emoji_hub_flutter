@@ -31,8 +31,27 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
+  # UI相关
+  glassmorphism: ^3.0.0
+  flutter_staggered_grid_view: ^0.7.0
+  
+  # 状态管理
+  flutter_riverpod: ^2.4.9
+  
+  # 数据存储
+  sqflite: ^2.3.0
+  path_provider: ^2.1.1
+  
+  # 图片处理
+  image_picker: ^1.0.7
+  cached_network_image: ^3.3.0
+  
+  # 动画效果
+  animations: ^2.0.8
+  
+  # 工具类
+  permission_handler: ^11.1.0
+
   cupertino_icons: ^1.0.8
 
 dev_dependencies:
