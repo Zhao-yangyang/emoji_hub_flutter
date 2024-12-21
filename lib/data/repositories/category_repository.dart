@@ -10,7 +10,9 @@ class CategoryRepository {
   final _db = DatabaseService();
 
   Future<List<Category>> getCategories() async {
-    return _db.getCategories();
+    final categories = await _db.getCategories();
+    categories.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    return categories;
   }
 
   Future<Category> getOrCreateDefaultCategory() async {
@@ -32,11 +34,13 @@ class CategoryRepository {
     return defaultCategory;
   }
 
-  Future<Category?> addCategory(String name, IconData icon) async {
+  Future<Category?> addCategory(String name, IconData icon,
+      {int? color}) async {
     try {
       final category = Category(
         name: name,
         icon: icon.codePoint,
+        color: color ?? 0xFF00E5FF,
         sortOrder: await _getNextSortOrder(),
       );
 
@@ -62,5 +66,26 @@ class CategoryRepository {
     final categories = await getCategories();
     if (categories.isEmpty) return 0;
     return categories.map((c) => c.sortOrder).reduce(max) + 1;
+  }
+
+  Future<bool> updateCategoriesOrder(List<Category> categories) async {
+    try {
+      final batch = await _db.database.then((db) => db.batch());
+
+      for (var i = 0; i < categories.length; i++) {
+        final category = categories[i];
+        final updatedCategory = category.copyWith(
+          sortOrder: i,
+          updateTime: DateTime.now(),
+        );
+        await _db.updateCategory(updatedCategory);
+      }
+
+      await batch.commit();
+      return true;
+    } catch (e) {
+      print('Error updating categories order: $e');
+      return false;
+    }
   }
 }

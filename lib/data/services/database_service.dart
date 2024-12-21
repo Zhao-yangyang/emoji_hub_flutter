@@ -13,8 +13,12 @@ class DatabaseService {
 
   // 获取数据库实例
   Future<Database> get database async {
-    _database ??= await _initDatabase();
-    return _database!;
+    return await openDatabase(
+      join(await getDatabasesPath(), 'emoji_hub.db'),
+      onCreate: (db, version) => _onCreate(db, version),
+      onUpgrade: _onUpgrade,
+      version: 2,
+    );
   }
 
   // 初始化数据库
@@ -49,7 +53,8 @@ class DatabaseService {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         icon INTEGER NOT NULL,
-        sort_order INTEGER NOT NULL DEFAULT 0,
+        color INTEGER NOT NULL DEFAULT 4278255615,
+        sort_order INTEGER NOT NULL,
         create_time TEXT NOT NULL,
         update_time TEXT NOT NULL,
         is_deleted INTEGER NOT NULL DEFAULT 0
@@ -73,24 +78,9 @@ class DatabaseService {
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      // 获取所有表情
-      final List<Map<String, dynamic>> emojis = await db.query('emojis');
-
-      // 修复路径
-      for (var emoji in emojis) {
-        final String path = emoji['path'];
-        if (path.startsWith('/')) {
-          // 提取文件名
-          final fileName = path.split('/').last;
-          // 更新为相对路径
-          await db.update(
-            'emojis',
-            {'path': 'emojis/$fileName'},
-            where: 'id = ?',
-            whereArgs: [emoji['id']],
-          );
-        }
-      }
+      // 添加 color 列
+      await db.execute(
+          'ALTER TABLE categories ADD COLUMN color INTEGER NOT NULL DEFAULT 4278255615');
     }
   }
 
@@ -189,5 +179,18 @@ class DatabaseService {
       where: 'id = ?',
       whereArgs: [id],
     );
+  }
+
+  Future<void> deleteDatabase() async {
+    final dbPath = await getDatabasesPath();
+    final path = join(dbPath, 'emoji_hub.db');
+    await databaseFactory.deleteDatabase(path);
+  }
+
+  // 添加一个调试方法
+  Future<void> debugPrintCategories() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query('categories');
+    print('所有分类: $maps');
   }
 }

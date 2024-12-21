@@ -11,17 +11,16 @@ import 'data/services/database_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 清理数据库中的路径
-  final db = DatabaseService();
-  await db.cleanupDatabase();
+  // 初始化数据库
+  final dbService = DatabaseService();
+  // await dbService.deleteDatabase();
+  await dbService.cleanupDatabase();
 
   // 根据平台初始化 SQLite
   if (Platform.isWindows || Platform.isLinux) {
-    // 桌面平台使用 FFI
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   }
-  // 移动平台使用默认实现，不需要特殊初始化
 
   runApp(
     const ProviderScope(

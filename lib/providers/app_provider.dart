@@ -42,3 +42,5 @@ final selectionModeProvider = StateProvider<bool>((ref) => false);
 final selectedEmojisProvider = StateProvider<Set<int>>((ref) => {});
 
 final emojiRepositoryProvider = Provider((ref) => EmojiRepository());
+
+final categoryEditModeProvider = StateProvider<bool>((ref) => false);

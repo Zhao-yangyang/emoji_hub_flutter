@@ -4,6 +4,7 @@ class Category {
   final int? id;
   final String name;
   final int icon;
+  final int color;
   final int sortOrder;
   final DateTime createTime;
   final DateTime updateTime;
@@ -13,6 +14,7 @@ class Category {
     this.id,
     required this.name,
     required this.icon,
+    this.color = 0xFF00E5FF,
     this.sortOrder = 0,
     DateTime? createTime,
     DateTime? updateTime,
@@ -25,6 +27,7 @@ class Category {
       id: json['id'] as int?,
       name: json['name'] as String,
       icon: json['icon'] as int,
+      color: json['color'] as int? ?? 0xFF00E5FF,
       sortOrder: json['sort_order'] as int,
       createTime: DateTime.parse(json['create_time'] as String),
       updateTime: DateTime.parse(json['update_time'] as String),
@@ -37,6 +40,7 @@ class Category {
       'id': id,
       'name': name,
       'icon': icon,
+      'color': color,
       'sort_order': sortOrder,
       'create_time': createTime.toIso8601String(),
       'update_time': updateTime.toIso8601String(),
@@ -48,6 +52,7 @@ class Category {
     int? id,
     String? name,
     int? icon,
+    int? color,
     int? sortOrder,
     DateTime? createTime,
     DateTime? updateTime,
@@ -57,6 +62,7 @@ class Category {
       id: id ?? this.id,
       name: name ?? this.name,
       icon: icon ?? this.icon,
+      color: color ?? this.color,
       sortOrder: sortOrder ?? this.sortOrder,
       createTime: createTime ?? this.createTime,
       updateTime: updateTime ?? this.updateTime,
