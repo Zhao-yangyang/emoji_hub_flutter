@@ -13,178 +13,134 @@ import '../../data/repositories/emoji_repository.dart'
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../core/utils/emoji_operations.dart';
 
-class EmojiCard extends StatelessWidget {
+class EmojiCard extends ConsumerWidget {
   final Emoji emoji;
+  final bool isSelectionMode;
+  final bool isSelected;
+  final ValueChanged<bool>? onSelected;
 
   const EmojiCard({
     super.key,
     required this.emoji,
+    this.isSelectionMode = false,
+    this.isSelected = false,
+    this.onSelected,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () {
-          showDialog(
-            context: context,
-            builder: (context) => EmojiPreviewDialog(emoji: emoji),
-          );
-        },
-        onLongPress: () {
-          showModalBottomSheet(
-            context: context,
-            builder: (context) => Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.copy),
-                  title: const Text('复制'),
-                  onTap: () async {
-                    try {
-                      // 获取应用文档目录
-                      final appDir = await getApplicationDocumentsDirectory();
-                      final fullPath = emoji.path.startsWith('/')
-                          ? emoji.path
-                          : '${appDir.path}/${emoji.path}';
+      child: Stack(
+        children: [
+          InkWell(
+            onTap: () {
+              if (isSelectionMode) {
+                onSelected?.call(!isSelected);
+              } else {
+                showDialog(
+                  context: context,
+                  builder: (context) => EmojiPreviewDialog(emoji: emoji),
+                );
+              }
+            },
+            onLongPress: () {
+              if (!isSelectionMode) {
+                ref.read(selectionModeProvider.notifier).state = true;
+                ref.read(selectedEmojisProvider.notifier).state = {emoji.id!};
+              } else {
+                onSelected?.call(!isSelected);
+              }
+            },
+            child: Opacity(
+              opacity: isSelectionMode && !isSelected ? 0.5 : 1.0,
+              child: SizedBox.expand(
+                child: FutureBuilder<String>(
+                  future: getApplicationDocumentsDirectory().then((dir) {
+                    if (emoji.path.startsWith('/')) {
+                      return emoji.path;
+                    }
+                    return '${dir.path}/${emoji.path}';
+                  }),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
 
-                      // 复制表情名称到剪贴板
-                      await Clipboard.setData(ClipboardData(
-                        text: emoji.name,
-                      ));
-
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('已复制表情名称到剪贴板')),
+                    return Image.file(
+                      File(snapshot.data!),
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                      errorBuilder: (context, error, stackTrace) {
+                        print('图片加载失败: $error\n路径: ${snapshot.data}');
+                        return const Center(
+                          child: Icon(Icons.error_outline, color: Colors.red),
                         );
-                      }
-                    } catch (e) {
-                      ErrorHandler.showError(context, '复制失败: $e');
-                    }
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.edit),
-                  title: const Text('编辑'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    showDialog(
-                      context: context,
-                      builder: (context) => EmojiEditDialog(emoji: emoji),
+                      },
                     );
                   },
                 ),
-                ListTile(
-                  leading: const Icon(Icons.delete),
-                  title: const Text('删除'),
-                  textColor: Colors.red,
-                  iconColor: Colors.red,
-                  onTap: () {
-                    Navigator.pop(context);
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('删除确认'),
-                        content: Text('确定要删除表情"${emoji.name}"吗？'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: const Text('取消'),
-                          ),
-                          Consumer(
-                            builder: (context, ref, _) => TextButton(
-                              onPressed: () async {
-                                final repository =
-                                    ref.read(emojiRepositoryProvider);
-                                final result =
-                                    await repository.deleteEmoji(emoji.id!);
-
-                                if (result && context.mounted) {
-                                  ref.invalidate(emojisProvider);
-                                  Navigator.of(context).pop();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('删���成功')),
-                                  );
-                                }
-                              },
-                              child: const Text('删除',
-                                  style: TextStyle(color: Colors.red)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.share),
-                  title: const Text('分享'),
-                  onTap: () async {
-                    try {
-                      final appDir = await getApplicationDocumentsDirectory();
-                      final fullPath = emoji.path.startsWith('/')
-                          ? emoji.path
-                          : '${appDir.path}/${emoji.path}';
-
-                      await Share.shareXFiles(
-                        [XFile(fullPath)],
-                        text: emoji.name,
-                      );
-
-                      if (context.mounted) {
-                        Navigator.pop(context); // 关闭底部菜单
-                      }
-                    } catch (e) {
-                      ErrorHandler.showError(context, '分享失败: $e');
-                    }
-                  },
-                ),
-              ],
-            ),
-          );
-        },
-        child: Column(
-          children: [
-            Expanded(
-              child: FutureBuilder<String>(
-                future: getApplicationDocumentsDirectory().then((dir) {
-                  if (emoji.path.startsWith('/')) {
-                    return emoji.path;
-                  }
-                  return '${dir.path}/${emoji.path}';
-                }),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  return Image.file(
-                    File(snapshot.data!),
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      print('图片加载失败: $error\n路径: ${snapshot.data}');
-                      return const Center(
-                        child: Icon(Icons.error_outline, color: Colors.red),
-                      );
-                    },
-                  );
-                },
               ),
             ),
-            Padding(
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              color: Colors.black54,
               padding: const EdgeInsets.all(4.0),
               child: Text(
                 emoji.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.white,
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+          if (isSelectionMode)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Colors.blue.withOpacity(0.2)
+                        : Colors.transparent,
+                    border: Border.all(
+                      color: isSelected ? Colors.blue : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                  child: Align(
+                    alignment: Alignment.topRight,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isSelected ? Colors.blue : Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isSelected ? Colors.blue : Colors.grey,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.check,
+                          size: 20,
+                          color: isSelected ? Colors.white : Colors.transparent,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

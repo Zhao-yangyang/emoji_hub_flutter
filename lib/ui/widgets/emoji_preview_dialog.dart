@@ -12,8 +12,9 @@ import '../../providers/app_provider.dart';
 import '../../ui/widgets/emoji_edit_dialog.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../core/utils/emoji_operations.dart';
 
-class EmojiPreviewDialog extends StatelessWidget {
+class EmojiPreviewDialog extends ConsumerWidget {
   final Emoji emoji;
 
   const EmojiPreviewDialog({
@@ -22,7 +23,7 @@ class EmojiPreviewDialog extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Dialog(
       child: Container(
         constraints: const BoxConstraints(
@@ -44,9 +45,29 @@ class EmojiPreviewDialog extends StatelessWidget {
               child: ClipRRect(
                 borderRadius:
                     BorderRadius.circular(AppConstants.cardBorderRadius),
-                child: Image.file(
-                  File(emoji.path),
-                  fit: BoxFit.contain,
+                child: FutureBuilder<String>(
+                  future: getApplicationDocumentsDirectory().then((dir) {
+                    if (emoji.path.startsWith('/')) {
+                      return emoji.path;
+                    }
+                    return '${dir.path}/${emoji.path}';
+                  }),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    return Image.file(
+                      File(snapshot.data!),
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        print('图片加载失败: $error\n路径: ${snapshot.data}');
+                        return const Center(
+                          child: Icon(Icons.error_outline, color: Colors.red),
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
             ),
@@ -75,17 +96,22 @@ class EmojiPreviewDialog extends StatelessWidget {
                     _ActionButton(
                       icon: Icons.copy,
                       label: '复制',
-                      onTap: () => _copyToClipboard(context),
+                      onTap: () => _copyToClipboard(context, ref),
                     ),
                     _ActionButton(
                       icon: Icons.edit,
                       label: '编辑',
-                      onTap: () => _showEditDialog(context),
+                      onTap: () => _showEditDialog(context, ref),
                     ),
                     _ActionButton(
                       icon: Icons.delete,
                       label: '删除',
-                      onTap: () => _showDeleteConfirm(context),
+                      onTap: () => EmojiOperations.deleteEmojis(
+                        context,
+                        ref,
+                        [emoji],
+                        closeParentDialog: true,
+                      ),
                     ),
                     _ActionButton(
                       icon: Icons.share,
@@ -143,7 +169,7 @@ class EmojiPreviewDialog extends StatelessWidget {
     );
   }
 
-  Future<void> _copyToClipboard(BuildContext context) async {
+  Future<void> _copyToClipboard(BuildContext context, WidgetRef ref) async {
     try {
       // 获取应用文档目录
       final appDir = await getApplicationDocumentsDirectory();
@@ -176,7 +202,7 @@ class EmojiPreviewDialog extends StatelessWidget {
     }
   }
 
-  void _showEditDialog(BuildContext context) {
+  void _showEditDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (context) => EmojiEditDialog(emoji: emoji),

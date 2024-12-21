@@ -35,4 +35,10 @@ final emojisProvider = FutureProvider<List<Emoji>>((ref) async {
   return repository.getEmojis(categoryId: categoryId);
 });
 
+// 选择模式状态
+final selectionModeProvider = StateProvider<bool>((ref) => false);
+
+// 选中的表情列表
+final selectedEmojisProvider = StateProvider<Set<int>>((ref) => {});
+
 final emojiRepositoryProvider = Provider((ref) => EmojiRepository());

@@ -18,6 +18,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final categoriesAsync = ref.watch(categoriesProvider);
     final emojisAsync = ref.watch(emojisProvider);
+    final isSelectionMode = ref.watch(selectionModeProvider);
 
     final isLoading = categoriesAsync.isLoading || emojisAsync.isLoading;
 
@@ -25,7 +26,7 @@ class HomeScreen extends ConsumerWidget {
     if (categoriesAsync.hasError || emojisAsync.hasError) {
       final error =
           categoriesAsync.hasError ? categoriesAsync.error : emojisAsync.error;
-      ErrorHandler.showError(context, '加��失败: $error');
+      ErrorHandler.showError(context, '加载失败: $error');
     }
 
     return LoadingOverlay(
@@ -33,10 +34,12 @@ class HomeScreen extends ConsumerWidget {
       message: '加载中...',
       child: Scaffold(
         backgroundColor: AppTheme.background,
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => _showImportDialog(context, ref),
-          child: const Icon(Icons.add_photo_alternate_rounded),
-        ),
+        floatingActionButton: isSelectionMode
+            ? null
+            : FloatingActionButton(
+                onPressed: () => _showImportDialog(context, ref),
+                child: const Icon(Icons.add_photo_alternate_rounded),
+              ),
         body: CustomScrollView(
           slivers: [
             // 自定义 AppBar
