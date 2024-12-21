@@ -31,16 +31,7 @@ class EmojiGrid extends ConsumerWidget {
               itemBuilder: (context, index) {
                 final emoji = emojis[index];
                 print('构建表情卡片: ${emoji.name} - ${emoji.path}'); // 添加构建日志
-                return EmojiCard(
-                  name: emoji.name,
-                  imagePath: emoji.path,
-                  onTap: () {
-                    // TODO: 实现表情预览
-                  },
-                  onLongPress: () {
-                    // TODO: 实现表情编辑菜单
-                  },
-                );
+                return EmojiCard(emoji: emoji);
               },
             ),
     );

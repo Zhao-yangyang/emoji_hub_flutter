@@ -34,3 +34,5 @@ final emojisProvider = FutureProvider<List<Emoji>>((ref) async {
   }
   return repository.getEmojis(categoryId: categoryId);
 });
+
+final emojiRepositoryProvider = Provider((ref) => EmojiRepository());
