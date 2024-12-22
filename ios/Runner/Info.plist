@@ -47,5 +47,13 @@
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>需要访问相册以导入表情包</string>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>UISupportsDocumentBrowser</key>
+	<true/>
+	<key>NSDocumentsDirectory</key>
+	<true/>
 </dict>
 </plist>

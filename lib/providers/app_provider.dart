@@ -4,6 +4,8 @@ import '../data/models/emoji.dart';
 import '../data/repositories/category_repository.dart';
 import '../data/repositories/emoji_repository.dart';
 import '../core/utils/image_cache_manager.dart';
+import '../core/utils/sync_manager.dart'
+    show BackupHistory, syncManagerProvider;
 
 // 分类列表状态
 final categoriesProvider = FutureProvider<List<Category>>((ref) async {
@@ -55,3 +57,7 @@ final cacheInfoProvider = FutureProvider<int>((ref) async {
 Future<void> clearImageCache() async {
   await ImageCacheManager.clearCache();
 }
+
+final backupHistoryProvider = FutureProvider<List<BackupHistory>>((ref) {
+  return ref.read(syncManagerProvider).getBackupHistory();
+});

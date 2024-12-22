@@ -9,6 +9,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_provider.dart';
 import '../../core/utils/error_handler.dart';
 import '../../core/utils/error_manager.dart';
+import '../../core/utils/loading_manager.dart';
+import '../../core/utils/sync_manager.dart';
+import '../../ui/widgets/backup_history_dialog.dart';
+import 'package:file_selector/file_selector.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -72,6 +76,79 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.save_alt),
+                  tooltip: '导出备份',
+                  onPressed: () async {
+                    try {
+                      ref
+                          .read(loadingProvider.notifier)
+                          .startLoading('正在导出数据...');
+                      final file =
+                          await ref.read(syncManagerProvider).exportData();
+                      ref.read(loadingProvider.notifier).stopLoading();
+
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('数据已导出到: ${file.path}')),
+                        );
+                      }
+                    } catch (e) {
+                      ref.read(loadingProvider.notifier).stopLoading();
+                    }
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.file_upload),
+                  tooltip: '导入恢复',
+                  onPressed: () async {
+                    try {
+                      final XFile? file = await openFile(
+                        acceptedTypeGroups: [
+                          XTypeGroup(
+                            label: '备份文件',
+                            extensions: ['json'],
+                            uniformTypeIdentifiers: ['public.json'],
+                          ),
+                        ],
+                      );
+
+                      if (file != null) {
+                        ref
+                            .read(loadingProvider.notifier)
+                            .startLoading('正在导入数据...');
+                        final jsonString = await file.readAsString();
+                        await ref
+                            .read(syncManagerProvider)
+                            .importData(jsonString);
+
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('数据导入成功')),
+                          );
+                        }
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ErrorHandler.showError(context, '导入失败: $e');
+                      }
+                    } finally {
+                      ref.read(loadingProvider.notifier).stopLoading();
+                    }
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.history),
+                  tooltip: '备份历史',
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => const BackupHistoryDialog(),
+                    );
+                  },
+                ),
+              ],
             ),
 
             // 分类列表占位

@@ -114,7 +114,6 @@ class DatabaseService {
     final List<Map<String, dynamic>> maps = await db.query(
       'categories',
       where: includeDeleted ? null : 'is_deleted = 0',
-      orderBy: 'sort_order ASC',
     );
     return List.generate(maps.length, (i) => Category.fromJson(maps[i]));
   }
@@ -191,5 +190,15 @@ class DatabaseService {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query('categories');
     print('所有分类: $maps');
+  }
+
+  Future<void> deleteAllCategories() async {
+    final db = await database;
+    await db.delete('categories');
+  }
+
+  Future<void> deleteAllEmojis() async {
+    final db = await database;
+    await db.delete('emojis');
   }
 }

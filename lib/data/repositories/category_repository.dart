@@ -9,8 +9,8 @@ final categoryRepositoryProvider = Provider((ref) => CategoryRepository());
 class CategoryRepository {
   final _db = DatabaseService();
 
-  Future<List<Category>> getCategories() async {
-    final categories = await _db.getCategories();
+  Future<List<Category>> getCategories({bool includeDeleted = false}) async {
+    final categories = await _db.getCategories(includeDeleted: includeDeleted);
     categories.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
     return categories;
   }
@@ -87,5 +87,9 @@ class CategoryRepository {
       print('Error updating categories order: $e');
       return false;
     }
+  }
+
+  Future<void> deleteAllCategories() async {
+    await _db.deleteAllCategories();
   }
 }
