@@ -3,6 +3,7 @@ import '../data/models/category.dart';
 import '../data/models/emoji.dart';
 import '../data/repositories/category_repository.dart';
 import '../data/repositories/emoji_repository.dart';
+import '../core/utils/image_cache_manager.dart';
 
 // 分类列表状态
 final categoriesProvider = FutureProvider<List<Category>>((ref) async {
@@ -44,3 +45,13 @@ final selectedEmojisProvider = StateProvider<Set<int>>((ref) => {});
 final emojiRepositoryProvider = Provider((ref) => EmojiRepository());
 
 final categoryEditModeProvider = StateProvider<bool>((ref) => false);
+
+// 缓存状态管理
+final cacheInfoProvider = FutureProvider<int>((ref) async {
+  return ImageCacheManager.getCacheSize();
+});
+
+// 清理缓存
+Future<void> clearImageCache() async {
+  await ImageCacheManager.clearCache();
+}

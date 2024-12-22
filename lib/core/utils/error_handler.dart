@@ -1,45 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../utils/error_manager.dart';
+import '../../ui/widgets/error_dialog.dart';
 
 class ErrorHandler {
-  static void showError(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(
-          label: '关闭',
-          textColor: Colors.white,
-          onPressed: () {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          },
-        ),
+  static void showError(BuildContext context, String message,
+      [StackTrace? stackTrace]) {
+    showDialog(
+      context: context,
+      builder: (context) => ErrorDialog(
+        message: message,
+        stackTrace: stackTrace,
       ),
     );
   }
 
-  static Future<bool> showConfirmDialog(
-    BuildContext context,
-    String title,
-    String content,
-  ) async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(content),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('确定'),
-          ),
-        ],
-      ),
-    );
-    return result ?? false;
+  static void handleError(WidgetRef ref, dynamic error,
+      [StackTrace? stackTrace]) {
+    ref.read(errorProvider.notifier).setError(
+          error.toString(),
+          stackTrace,
+        );
   }
 }

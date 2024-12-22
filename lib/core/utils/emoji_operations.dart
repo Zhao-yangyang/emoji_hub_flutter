@@ -78,40 +78,53 @@ class EmojiOperations {
     String categoryName, {
     bool closeParentDialog = false,
   }) async {
-    final repository = ref.read(emojiRepositoryProvider);
-    int successCount = 0;
+    try {
+      final repository = ref.read(emojiRepositoryProvider);
+      int successCount = 0;
 
-    for (var emoji in emojis) {
-      final updatedEmoji = emoji.copyWith(
-        categoryId: targetCategoryId,
-        updateTime: DateTime.now(),
-      );
-      final result = await repository.updateEmoji(updatedEmoji);
-      if (result) successCount++;
-    }
+      for (var emoji in emojis) {
+        final updatedEmoji = emoji.copyWith(
+          categoryId: targetCategoryId,
+          updateTime: DateTime.now(),
+        );
+        final result = await repository.updateEmoji(updatedEmoji);
+        if (result) successCount++;
+      }
 
-    if (context.mounted) {
-      ref.invalidate(emojisProvider);
-      // 如果是批量操作，清除选择状态
-      if (emojis.length > 1) {
-        ref.read(selectionModeProvider.notifier).state = false;
-        ref.read(selectedEmojisProvider.notifier).state = {};
-      }
-      if (closeParentDialog) {
-        Navigator.of(context).pop(); // 关闭分类选择对话框
-        Navigator.of(context).pop(); // 关闭预览对话框
-      } else {
-        Navigator.of(context).pop(); // 只关闭分类选择对话框
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            emojis.length > 1
-                ? '已将 $successCount 个表情移动到"$categoryName"'
-                : '已移动到"$categoryName"',
+      if (context.mounted) {
+        // 刷新所有相关状态
+        ref.invalidate(emojisProvider);
+        ref.invalidate(categoriesProvider); // 刷新分类列表
+
+        // 如果是批量操作，清除选择状态
+        if (emojis.length > 1) {
+          ref.read(selectionModeProvider.notifier).state = false;
+          ref.read(selectedEmojisProvider.notifier).state = {};
+        }
+
+        // 关闭对话框
+        if (closeParentDialog) {
+          Navigator.of(context).pop(); // 关闭分类选择对话框
+          Navigator.of(context).pop(); // 关闭预览对话框
+        } else {
+          Navigator.of(context).pop(); // 只关闭分类选择对话框
+        }
+
+        // 显示成功提示
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              emojis.length > 1
+                  ? '已将 $successCount 个表情移动到"$categoryName"'
+                  : '已移动到"$categoryName"',
+            ),
           ),
-        ),
-      );
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ErrorHandler.showError(context, '移动失败: $e');
+      }
     }
   }
 
@@ -123,9 +136,9 @@ class EmojiOperations {
     try {
       final appDir = await getApplicationDocumentsDirectory();
       final files = emojis.map((emoji) {
-        final fullPath = emoji.path!.startsWith('/')
-            ? emoji.path!
-            : '${appDir.path}/${emoji.path!}';
+        final fullPath = emoji.path.startsWith('/')
+            ? emoji.path
+            : '${appDir.path}/${emoji.path}';
         return XFile(fullPath);
       }).toList();
 

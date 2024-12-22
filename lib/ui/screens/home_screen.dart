@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
 import '../../ui/widgets/category_list.dart';
-import '../../ui/widgets/emoji_card.dart';
 import '../../ui/widgets/emoji_grid.dart';
 import '../../ui/widgets/import_emoji_dialog.dart';
 import '../../ui/widgets/loading_overlay.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_provider.dart';
 import '../../core/utils/error_handler.dart';
+import '../../core/utils/error_manager.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -19,8 +18,17 @@ class HomeScreen extends ConsumerWidget {
     final categoriesAsync = ref.watch(categoriesProvider);
     final emojisAsync = ref.watch(emojisProvider);
     final isSelectionMode = ref.watch(selectionModeProvider);
+    final errorState = ref.watch(errorProvider);
 
     final isLoading = categoriesAsync.isLoading || emojisAsync.isLoading;
+
+    // 监听错误状态
+    ref.listen(errorProvider, (previous, next) {
+      if (next.hasError) {
+        ErrorHandler.showError(context, next.message!, next.stackTrace);
+        ref.read(errorProvider.notifier).clearError();
+      }
+    });
 
     // 处理错误状态
     if (categoriesAsync.hasError || emojisAsync.hasError) {
@@ -30,8 +38,6 @@ class HomeScreen extends ConsumerWidget {
     }
 
     return LoadingOverlay(
-      isLoading: isLoading,
-      message: '加载中...',
       child: Scaffold(
         backgroundColor: AppTheme.background,
         floatingActionButton: isSelectionMode

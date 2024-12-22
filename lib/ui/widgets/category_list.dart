@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/constants/app_constants.dart';
-import '../../providers/category_provider.dart';
 import '../../providers/app_provider.dart';
 import 'category_card.dart';
-import '../../core/utils/animation_utils.dart';
 import 'add_category_dialog.dart';
 import '../../data/repositories/category_repository.dart';
 import '../../core/utils/error_handler.dart';
@@ -78,7 +75,7 @@ class _CategoryListState extends ConsumerState<CategoryList> {
           ),
 
         // 分类列表
-        Container(
+        SizedBox(
           height: 100,
           child: Row(
             children: [

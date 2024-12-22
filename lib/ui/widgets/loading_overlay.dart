@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/utils/loading_manager.dart';
 
-class LoadingOverlay extends StatelessWidget {
+class LoadingOverlay extends ConsumerWidget {
   final Widget child;
-  final bool isLoading;
-  final String? message;
 
   const LoadingOverlay({
     super.key,
     required this.child,
-    required this.isLoading,
-    this.message,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final loadingState = ref.watch(loadingProvider);
+
     return Stack(
       children: [
         child,
-        if (isLoading)
+        if (loadingState.isLoading)
           Container(
             color: Colors.black54,
             child: Center(
@@ -25,11 +25,11 @@ class LoadingOverlay extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const CircularProgressIndicator(),
-                  if (message != null)
+                  if (loadingState.message != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 16),
                       child: Text(
-                        message!,
+                        loadingState.message!,
                         style: const TextStyle(color: Colors.white),
                       ),
                     ),

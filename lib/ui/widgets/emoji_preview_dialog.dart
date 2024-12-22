@@ -1,12 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/models/emoji.dart';
 import '../../core/utils/error_handler.dart';
-import '../../data/repositories/emoji_repository.dart'
-    hide emojiRepositoryProvider;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_provider.dart';
 import '../../ui/widgets/emoji_edit_dialog.dart';

@@ -3,12 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
-import '../../core/theme/app_theme.dart';
-import '../../core/constants/app_constants.dart';
-import '../../data/repositories/emoji_repository.dart'
-    hide emojiRepositoryProvider;
 import '../../providers/app_provider.dart';
 import '../../core/utils/error_handler.dart';
+import '../../core/utils/image_cache_manager.dart';
+import '../../core/utils/loading_manager.dart';
 
 class ImportEmojiDialog extends ConsumerStatefulWidget {
   const ImportEmojiDialog({super.key});
@@ -83,23 +81,24 @@ class _ImportEmojiDialogState extends ConsumerState<ImportEmojiDialog> {
   }
 
   Future<void> _importEmojis() async {
-    print('开始导入表情...');
-    if (_selectedImages.isEmpty) {
-      print('没有选择图片');
-      ErrorHandler.showError(context, '请先选择图片');
-      return;
-    }
-
-    final categoryId = ref.read(selectedCategoryIdProvider);
-    print('当前分类ID: $categoryId');
-
-    if (categoryId == null) {
-      print('未选择分类');
-      ErrorHandler.showError(context, '请先选择一个分类');
-      return;
-    }
-
     try {
+      ref.read(loadingProvider.notifier).startLoading('正在导入表情...');
+
+      if (_selectedImages.isEmpty) {
+        print('没有选择图片');
+        ErrorHandler.showError(context, '请先选择图片');
+        return;
+      }
+
+      final categoryId = ref.read(selectedCategoryIdProvider);
+      print('当前分类ID: $categoryId');
+
+      if (categoryId == null) {
+        print('未选择分类');
+        ErrorHandler.showError(context, '请先选择一个分类');
+        return;
+      }
+
       final repository = ref.read(emojiRepositoryProvider);
       int imported = 0;
 
@@ -117,6 +116,9 @@ class _ImportEmojiDialogState extends ConsumerState<ImportEmojiDialog> {
           setState(() {
             _importProgress = imported / _selectedImages.length;
           });
+
+          // 预缓存图片
+          await ImageCacheManager.cacheImage(emoji.path);
         } else {
           print('导入失败');
         }
@@ -132,8 +134,10 @@ class _ImportEmojiDialogState extends ConsumerState<ImportEmojiDialog> {
           ),
         );
       }
+
+      ref.read(loadingProvider.notifier).stopLoading();
     } catch (e) {
-      print('导入过程出错: $e');
+      ref.read(loadingProvider.notifier).stopLoading();
       ErrorHandler.showError(context, '导入失败: $e');
     }
   }

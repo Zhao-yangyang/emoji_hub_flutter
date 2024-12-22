@@ -1,13 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
-import '../../core/constants/app_constants.dart';
 import 'emoji_card.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_provider.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:flutter/services.dart';
-import '../../core/utils/error_handler.dart';
 import '../../data/models/emoji.dart';
 import '../../core/utils/emoji_operations.dart';
 import 'dart:io';

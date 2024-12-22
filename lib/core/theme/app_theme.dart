@@ -17,7 +17,6 @@ class AppTheme {
         primary: accent,
         secondary: accent,
         surface: surface,
-        background: background,
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: background,

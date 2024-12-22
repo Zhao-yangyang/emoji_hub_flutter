@@ -1,19 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import '../../core/theme/app_theme.dart';
-import '../../core/constants/app_constants.dart';
 import '../../ui/widgets/emoji_preview_dialog.dart';
-import '../../ui/widgets/emoji_edit_dialog.dart';
 import '../../data/models/emoji.dart';
-import 'package:flutter/services.dart';
-import '../../core/utils/error_handler.dart';
-import '../../data/repositories/emoji_repository.dart'
-    hide emojiRepositoryProvider;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_provider.dart';
-import 'package:share_plus/share_plus.dart';
-import '../../core/utils/emoji_operations.dart';
+import '../../core/utils/image_cache_manager.dart';
 
 class EmojiCard extends ConsumerWidget {
   final Emoji emoji;
@@ -57,30 +49,23 @@ class EmojiCard extends ConsumerWidget {
             child: Opacity(
               opacity: isSelectionMode && !isSelected ? 0.5 : 1.0,
               child: SizedBox.expand(
-                child: FutureBuilder<String>(
-                  future: getApplicationDocumentsDirectory().then((dir) {
-                    if (emoji.path.startsWith('/')) {
-                      return emoji.path;
-                    }
-                    return '${dir.path}/${emoji.path}';
-                  }),
+                child: FutureBuilder<File?>(
+                  future: ImageCacheManager.getCachedImage(emoji.path),
                   builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const Center(child: CircularProgressIndicator());
+                    if (snapshot.hasData) {
+                      return Image.file(
+                        snapshot.data!,
+                        fit: BoxFit.cover,
+                        cacheWidth: 200,
+                        errorBuilder: (context, error, stackTrace) {
+                          print('图片加载失败: $error\n路径: ${emoji.path}');
+                          return const Center(
+                            child: Icon(Icons.error_outline, color: Colors.red),
+                          );
+                        },
+                      );
                     }
-
-                    return Image.file(
-                      File(snapshot.data!),
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: double.infinity,
-                      errorBuilder: (context, error, stackTrace) {
-                        print('图片加载失败: $error\n路径: ${snapshot.data}');
-                        return const Center(
-                          child: Icon(Icons.error_outline, color: Colors.red),
-                        );
-                      },
-                    );
+                    return const Center(child: CircularProgressIndicator());
                   },
                 ),
               ),
