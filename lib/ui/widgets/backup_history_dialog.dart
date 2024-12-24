@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/utils/sync_manager.dart';
-import '../../core/theme/app_theme.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
 import '../../core/utils/loading_manager.dart';
 import '../../core/utils/error_handler.dart';
 import '../../providers/app_provider.dart' show backupHistoryProvider;
 import 'dart:convert';
-import 'package:path_provider/path_provider.dart';
 
 class BackupHistoryDialog extends ConsumerWidget {
   const BackupHistoryDialog({super.key});

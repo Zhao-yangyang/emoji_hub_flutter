@@ -13,18 +13,23 @@ import '../../core/utils/loading_manager.dart';
 import '../../core/utils/sync_manager.dart';
 import '../../ui/widgets/backup_history_dialog.dart';
 import 'package:file_selector/file_selector.dart';
+import 'dart:io' show Platform;
+import 'package:emoji_hub_flutter/core/services/floating_window_service.dart';
+import 'package:emoji_hub_flutter/core/services/permission_service.dart';
 
-class HomeScreen extends ConsumerWidget {
-  const HomeScreen({super.key});
+class HomeScreen extends ConsumerStatefulWidget {
+  const HomeScreen({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  Widget build(BuildContext context) {
     final categoriesAsync = ref.watch(categoriesProvider);
     final emojisAsync = ref.watch(emojisProvider);
     final isSelectionMode = ref.watch(selectionModeProvider);
-    final errorState = ref.watch(errorProvider);
-
-    final isLoading = categoriesAsync.isLoading || emojisAsync.isLoading;
 
     // 监听错误状态
     ref.listen(errorProvider, (previous, next) {
@@ -40,6 +45,10 @@ class HomeScreen extends ConsumerWidget {
           categoriesAsync.hasError ? categoriesAsync.error : emojisAsync.error;
       ErrorHandler.showError(context, '加载失败: $error');
     }
+
+    // 获取悬浮窗服务
+    final floatingWindowService = ref.watch(floatingWindowServiceProvider);
+    final permissionService = ref.watch(permissionServiceProvider);
 
     return LoadingOverlay(
       child: Scaffold(
@@ -147,6 +156,49 @@ class HomeScreen extends ConsumerWidget {
                       builder: (context) => const BackupHistoryDialog(),
                     );
                   },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.dock),
+                  tooltip: '系统悬浮工具条',
+                  onPressed: Platform.isAndroid
+                      ? () async {
+                          try {
+                            print("开始处理悬浮窗操作");
+                            print("检查悬浮窗权限");
+                            // 检查权限
+                            final hasPermission = await permissionService
+                                .checkOverlayPermission();
+                            print("悬浮窗权限状态: $hasPermission");
+
+                            if (!hasPermission) {
+                              print("请求悬浮窗权限");
+                              // 请求权限
+                              await permissionService
+                                  .requestOverlayPermission();
+                              print("权限请求已发送");
+                              return;
+                            }
+
+                            print("切换悬浮窗状态");
+                            // 显示悬浮窗
+                            await floatingWindowService.toggle();
+                            print("悬浮窗切换命令已发送");
+
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('悬浮窗已切换')),
+                              );
+                            }
+                          } catch (e, stack) {
+                            print("操作悬浮窗失败");
+                            print("错误信息: $e");
+                            print("错误堆栈: $stack");
+                            if (context.mounted) {
+                              ErrorHandler.showError(context, '操作悬浮窗失败: $e');
+                            }
+                          }
+                        }
+                      : null,
                 ),
               ],
             ),

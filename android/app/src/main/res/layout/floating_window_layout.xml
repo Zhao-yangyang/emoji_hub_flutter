@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/root"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:alpha="0.95"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="4dp">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- 顶部工具栏 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:background="@color/purple_500"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="8dp">
+
+            <ImageView
+                android:id="@+id/ivLogo"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@mipmap/ic_launcher" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="EmojiHub"
+                android:textColor="@android:color/white"
+                android:textSize="14sp" />
+
+            <ImageButton
+                android:id="@+id/btnClose"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:padding="4dp"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:tint="@android:color/white" />
+        </LinearLayout>
+
+        <!-- 内容区域 -->
+        <FrameLayout
+            android:id="@+id/flutterContainer"
+            android:layout_width="280dp"
+            android:layout_height="320dp"
+            android:background="@android:color/white" />
+
+        <!-- 底部工具栏 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:background="@color/purple_500"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:padding="4dp">
+
+            <ImageButton
+                android:id="@+id/btnExpand"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:padding="4dp"
+                android:src="@android:drawable/arrow_up_float"
+                android:tint="@android:color/white" />
+
+            <ImageButton
+                android:id="@+id/btnCollapse"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="16dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:padding="4dp"
+                android:src="@android:drawable/arrow_down_float"
+                android:tint="@android:color/white" />
+        </LinearLayout>
+    </LinearLayout>
+</androidx.cardview.widget.CardView> 

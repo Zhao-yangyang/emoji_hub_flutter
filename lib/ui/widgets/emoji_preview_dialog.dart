@@ -176,6 +176,9 @@ class EmojiPreviewDialog extends ConsumerWidget {
 
       // 读取图片文件
       final file = File(fullPath);
+      if (!await file.exists()) {
+        throw Exception('图片文件不存在');
+      }
       final bytes = await file.readAsBytes();
 
       // 创建剪贴板数据

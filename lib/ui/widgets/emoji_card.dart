@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 import '../../ui/widgets/emoji_preview_dialog.dart';
 import '../../data/models/emoji.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -56,11 +55,21 @@ class EmojiCard extends ConsumerWidget {
                       return Image.file(
                         snapshot.data!,
                         fit: BoxFit.cover,
-                        cacheWidth: 200,
                         errorBuilder: (context, error, stackTrace) {
-                          print('图片加载失败: $error\n路径: ${emoji.path}');
-                          return const Center(
-                            child: Icon(Icons.error_outline, color: Colors.red),
+                          print('图片加载失败: $error');
+                          print('路径: ${emoji.path}');
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.error_outline,
+                                    color: Colors.red),
+                                const SizedBox(height: 4),
+                                Text('加载失败',
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall),
+                              ],
+                            ),
                           );
                         },
                       );
