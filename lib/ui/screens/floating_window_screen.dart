@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/theme/app_theme.dart';
 import 'dart:io';
 import '../../data/repositories/emoji_repository.dart';
 import '../../data/models/emoji.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'package:share_plus/share_plus.dart';
 
 class FloatingWindowScreen extends StatefulWidget {
   const FloatingWindowScreen({Key? key}) : super(key: key);
@@ -41,7 +43,7 @@ class _FloatingWindowScreenState extends State<FloatingWindowScreen> {
   Future<void> _loadEmojis() async {
     try {
       final emojis = await _repository.getEmojis();
-
+      print('加载到 ${emojis.length} 个表情');
       setState(() {
         _emojis = emojis;
         _isLoading = false;
@@ -59,19 +61,48 @@ class _FloatingWindowScreenState extends State<FloatingWindowScreen> {
     return path.join(_appDocPath!, relativePath);
   }
 
+  Future<void> _shareEmoji(BuildContext context, Emoji emoji) async {
+    final imagePath = _getFullPath(emoji.path);
+    await _shareEmojiFile(imagePath);
+  }
+
+  Future<void> _shareEmojiFile(String imagePath) async {
+    print('尝试分享图片: $imagePath');
+    try {
+      await Share.shareXFiles([XFile(imagePath)]);
+      print('分享成功');
+    } catch (e) {
+      print('分享失败: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('分享失败: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    print('构建悬浮窗界面, isLoading: $_isLoading, emojis数量: ${_emojis.length}');
+
     if (_isLoading) {
       return const Material(
         color: Colors.transparent,
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(
+          child: CircularProgressIndicator(),
+        ),
       );
     }
 
     if (_emojis.isEmpty) {
       return const Material(
         color: Colors.transparent,
-        child: Center(child: Text('没有表情')),
+        child: Center(
+          child: Text('没有表情'),
+        ),
       );
     }
 
@@ -89,20 +120,23 @@ class _FloatingWindowScreenState extends State<FloatingWindowScreen> {
           itemCount: _emojis.length,
           itemBuilder: (context, index) {
             final emoji = _emojis[index];
-            return GestureDetector(
+            final imagePath = _getFullPath(emoji.path);
+
+            return InkWell(
               onTap: () {
-                // TODO: 实现复制功能
+                print('点击表情: ${emoji.id}');
+                _shareEmoji(context, emoji);
               },
               child: Card(
                 elevation: 2,
                 child: Padding(
                   padding: const EdgeInsets.all(4),
                   child: Image.file(
-                    File(_getFullPath(emoji.path)),
+                    File(imagePath),
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
                       print('加载图片失败: $error');
-                      print('尝试加载的路径: ${_getFullPath(emoji.path)}');
+                      print('尝试加载的路径: $imagePath');
                       return const Icon(Icons.error);
                     },
                   ),

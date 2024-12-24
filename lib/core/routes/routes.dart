@@ -6,7 +6,7 @@ class Routes {
 
   static Map<String, WidgetBuilder> getRoutes() {
     return {
-      floatingWindow: (context) => const FloatingWindowView(),
+      floatingWindow: (context) => FloatingWindowView(),
     };
   }
 }

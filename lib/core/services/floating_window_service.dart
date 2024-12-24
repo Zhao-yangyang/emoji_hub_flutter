@@ -9,15 +9,11 @@ class FloatingWindowService {
 
   Future<void> show() async {
     try {
-      print('FloatingWindowService: 发送显示悬浮窗命令');
+      print('FloatingWindowService: 准备显示悬浮窗');
       await platform.invokeMethod('showFloatingWindow');
-      print('FloatingWindowService: 显示悬浮窗命令已发送');
-    } on PlatformException catch (e) {
-      print('FloatingWindowService: 显示悬浮窗失败: ${e.message}');
-      print('FloatingWindowService: 错误详情: ${e.details}');
-      rethrow;
+      print('FloatingWindowService: 悬浮窗显示成功');
     } catch (e) {
-      print('FloatingWindowService: 未知错误: $e');
+      print('FloatingWindowService: 显示悬浮窗失败: $e');
       rethrow;
     }
   }

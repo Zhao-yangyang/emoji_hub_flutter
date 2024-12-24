@@ -20,6 +20,9 @@ import androidx.core.app.NotificationCompat
 import io.flutter.embedding.android.FlutterView
 import io.flutter.embedding.engine.FlutterEngine
 import android.util.Log
+import android.util.DisplayMetrics
+import android.view.Display
+import android.graphics.Point
 
 class FloatingWindowService : Service() {
     private val TAG = "FloatingWindowService"
@@ -30,6 +33,7 @@ class FloatingWindowService : Service() {
     private var isExpanded = true
     private var flutterEngine: FlutterEngine? = null
     private var flutterView: FlutterView? = null
+    private var isMinimized = false
     
     private val NOTIFICATION_CHANNEL_ID = "FloatingWindowService"
     private val NOTIFICATION_ID = 1
@@ -107,49 +111,39 @@ class FloatingWindowService : Service() {
         }
     }
 
+    private fun getScreenSize(): Point {
+        val windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        val point = Point()
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val metrics = windowManager.currentWindowMetrics
+            point.x = metrics.bounds.width()
+            point.y = metrics.bounds.height()
+        } else {
+            @Suppress("DEPRECATION")
+            val display = windowManager.defaultDisplay
+            display.getSize(point)
+        }
+        
+        return point
+    }
+
     private fun initializeFloatingWindow() {
-        Log.i(TAG, "Initializing floating window")
         try {
+            Log.d(TAG, "Initializing floating window")
             windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-            Log.i(TAG, "Window manager obtained")
-            
-            // 加载布局
-            try {
-                floatingView = LayoutInflater.from(this).inflate(R.layout.floating_window_layout, null)
-                Log.i(TAG, "Layout inflated")
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to inflate layout", e)
-                e.printStackTrace()
-                return
-            }
-            
-            if (floatingView == null) {
-                Log.e(TAG, "Failed to inflate floating window layout")
-                return
-            }
+            floatingView = LayoutInflater.from(this).inflate(R.layout.floating_window_layout, null)
 
-            // 查找根视图
-            val rootView = floatingView?.findViewById<CardView>(R.id.root)
-            if (rootView == null) {
-                Log.e(TAG, "Failed to find root view")
-                return
-            }
-            Log.i(TAG, "Root view found")
-
+            // 查找必要的视图
             flutterContainer = floatingView?.findViewById(R.id.flutterContainer)
-            if (flutterContainer == null) {
-                Log.e(TAG, "Failed to find flutter container")
-                return
-            }
-            Log.i(TAG, "Flutter container found")
-
-            // 初始化FlutterView
-            initFlutterView()
-
+            
+            // 获取屏幕尺寸
+            val screenSize = getScreenSize()
+            
             // 设置悬浮窗参数
             params = WindowManager.LayoutParams().apply {
-                width = WindowManager.LayoutParams.WRAP_CONTENT
-                height = WindowManager.LayoutParams.WRAP_CONTENT
+                width = (screenSize.x * 0.5).toInt()
+                height = (screenSize.y * 0.4).toInt()
                 type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
                 } else {
@@ -161,24 +155,20 @@ class FloatingWindowService : Service() {
                 x = 0
                 y = 100
             }
-            Log.i(TAG, "Window parameters set")
 
             // 设置按钮点击事件
             setupButtons()
-            Log.i(TAG, "Buttons set up")
             
             // 添加触摸事件处理
             setupTouchListener()
-            Log.i(TAG, "Touch listener set up")
 
             // 添加悬浮窗到窗口管理器
-            try {
-                windowManager?.addView(floatingView, params)
-                Log.i(TAG, "Floating window added to window manager successfully")
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to add view to window manager", e)
-                e.printStackTrace()
-            }
+            windowManager?.addView(floatingView, params)
+            
+            // 初始化FlutterView（移到添加视图之后）
+            initFlutterView()
+            
+            Log.d(TAG, "Floating window initialized successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize floating window", e)
             e.printStackTrace()
@@ -204,22 +194,35 @@ class FloatingWindowService : Service() {
     }
 
     private fun setupButtons() {
-        // 关闭按钮
-        floatingView?.findViewById<ImageButton>(R.id.btnClose)?.setOnClickListener {
-            Log.d(TAG, "Close button clicked")
-            stopSelf()
-        }
+        Log.d(TAG, "Setting up buttons")
+        try {
+            // 关闭按钮改为最小化
+            floatingView?.findViewById<ImageButton>(R.id.btnClose)?.setOnClickListener {
+                Log.d(TAG, "Minimize button clicked")
+                minimizeWindow()
+            }
 
-        // 展开按钮
-        floatingView?.findViewById<ImageButton>(R.id.btnExpand)?.setOnClickListener {
-            Log.d(TAG, "Expand button clicked")
-            toggleWindowSize(true)
-        }
+            // 最小化图标点击恢复
+            floatingView?.findViewById<View>(R.id.minimizedIcon)?.setOnClickListener {
+                Log.d(TAG, "Minimized icon clicked")
+                restoreWindow()
+            }
 
-        // 收起按钮
-        floatingView?.findViewById<ImageButton>(R.id.btnCollapse)?.setOnClickListener {
-            Log.d(TAG, "Collapse button clicked")
-            toggleWindowSize(false)
+            // 展开按钮
+            floatingView?.findViewById<ImageButton>(R.id.btnExpand)?.setOnClickListener {
+                Log.d(TAG, "Expand button clicked")
+                toggleWindowSize(true)
+            }
+
+            // 收起按钮
+            floatingView?.findViewById<ImageButton>(R.id.btnCollapse)?.setOnClickListener {
+                Log.d(TAG, "Collapse button clicked")
+                toggleWindowSize(false)
+            }
+            Log.d(TAG, "Buttons set up successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting up buttons", e)
+            e.printStackTrace()
         }
     }
 
@@ -237,7 +240,8 @@ class FloatingWindowService : Service() {
         var initialTouchY: Float = 0f
         var isMoved = false
 
-        floatingView?.findViewById<CardView>(R.id.root)?.setOnTouchListener { view, event ->
+        // 为根视图和最小化图标都添加触摸监听
+        val touchListener = View.OnTouchListener { view, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     initialX = params?.x ?: 0
@@ -245,29 +249,106 @@ class FloatingWindowService : Service() {
                     initialTouchX = event.rawX
                     initialTouchY = event.rawY
                     isMoved = false
-                    true
+                    // 让Flutter视图可以接收触摸事件
+                    params?.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                            WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+                    windowManager?.updateViewLayout(floatingView, params)
+                    false
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    val deltaX = (event.rawX - initialTouchX).toInt()
-                    val deltaY = (event.rawY - initialTouchY).toInt()
+                    val deltaX = event.rawX - initialTouchX
+                    val deltaY = event.rawY - initialTouchY
                     if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
                         isMoved = true
-                        params?.apply {
-                            x = initialX + deltaX
-                            y = initialY + deltaY
-                        }
+                        params?.x = (initialX + deltaX).toInt()
+                        params?.y = (initialY + deltaY).toInt()
                         windowManager?.updateViewLayout(floatingView, params)
                     }
-                    true
+                    isMoved
                 }
                 MotionEvent.ACTION_UP -> {
                     if (!isMoved) {
-                        view.performClick()
+                        // 如果没有移动，恢复正常的触摸事件处理
+                        params?.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        windowManager?.updateViewLayout(floatingView, params)
+                        // 如果是最小化图标被点击，则恢复���口
+                        if (isMinimized && view.id == R.id.minimizedIcon) {
+                            restoreWindow()
+                        }
+                        false
+                    } else {
+                        // 如果移动了，消费这个事件
+                        true
                     }
-                    true
                 }
                 else -> false
             }
+        }
+
+        // 为根视图添加触摸监听
+        floatingView?.findViewById<CardView>(R.id.root)?.setOnTouchListener(touchListener)
+        
+        // 为最小化图标添加触摸监听
+        floatingView?.findViewById<View>(R.id.minimizedIcon)?.setOnTouchListener(touchListener)
+
+        // 为Flutter容器添加触摸监听
+        flutterContainer?.setOnTouchListener { _, event ->
+            // 始终允许Flutter处理触摸事件
+            false
+        }
+    }
+
+    private fun minimizeWindow() {
+        try {
+            isMinimized = true
+            val screenSize = getScreenSize()
+            
+            params?.apply {
+                width = 32
+                height = 32
+                x = screenSize.x - width - 16
+                y = screenSize.y / 2 - height / 2
+                flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+            }
+            
+            // 更新UI
+            floatingView?.apply {
+                findViewById<View>(R.id.contentContainer)?.visibility = View.GONE
+                findViewById<View>(R.id.minimizedIcon)?.visibility = View.VISIBLE
+            }
+            
+            // 更新窗口布局
+            windowManager?.updateViewLayout(floatingView, params)
+            Log.d(TAG, "Window minimized successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error minimizing window", e)
+        }
+    }
+    
+    private fun restoreWindow() {
+        try {
+            isMinimized = false
+            val screenSize = getScreenSize()
+            
+            params?.apply {
+                width = (screenSize.x * 0.5).toInt()
+                height = (screenSize.y * 0.4).toInt()
+                x = (screenSize.x - width) / 2
+                y = (screenSize.y - height) / 2
+                flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+            }
+            
+            // 更新UI
+            floatingView?.apply {
+                findViewById<View>(R.id.contentContainer)?.visibility = View.VISIBLE
+                findViewById<View>(R.id.minimizedIcon)?.visibility = View.GONE
+            }
+            
+            // 更新窗口布局
+            windowManager?.updateViewLayout(floatingView, params)
+            Log.d(TAG, "Window restored successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error restoring window", e)
         }
     }
 
@@ -286,5 +367,7 @@ class FloatingWindowService : Service() {
             windowManager?.removeView(it)
             Log.d(TAG, "Floating window removed from window manager")
         }
+        // 销毁悬浮窗引擎
+        FlutterEngineManager.getInstance(this).destroyFloatingWindowEngine()
     }
 } 

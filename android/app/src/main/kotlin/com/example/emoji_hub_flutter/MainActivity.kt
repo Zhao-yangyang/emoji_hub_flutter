@@ -4,18 +4,24 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import android.content.Intent
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.app.Activity
+import java.io.File
 import android.util.Log
 import android.widget.Toast
+import android.os.Bundle
 
 class MainActivity: FlutterActivity() {
     companion object {
         private const val TAG = "MainActivity"
         private const val FLOATING_WINDOW_CHANNEL = "com.emojihub.floating_window"
         private const val PERMISSIONS_CHANNEL = "com.emojihub.permissions"
+        private const val CLIPBOARD_CHANNEL = "com.example.emoji_hub_flutter/clipboard"
         private const val OVERLAY_PERMISSION_REQUEST_CODE = 1234
     }
 
@@ -23,15 +29,25 @@ class MainActivity: FlutterActivity() {
     private var pendingShowWindow = false
     private lateinit var floatingWindowChannel: MethodChannel
     private lateinit var permissionsChannel: MethodChannel
+    private lateinit var clipboardChannel: MethodChannel
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        FlutterEngineManager.getInstance(this).setFlutterEngine(flutterEngine!!)
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         
         Log.i(TAG, "Configuring Flutter engine")
-        // 初始化FlutterEngineManager
-        FlutterEngineManager.getInstance(this)
+        // 初始化FlutterEngineManager并传递FlutterEngine
+        FlutterEngineManager.getInstance(this).setFlutterEngine(flutterEngine)
         Log.i(TAG, "FlutterEngineManager initialized")
         
+        setupMethodChannels(flutterEngine)
+    }
+
+    private fun setupMethodChannels(flutterEngine: FlutterEngine) {
         // 悬浮窗通道
         floatingWindowChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, FLOATING_WINDOW_CHANNEL)
         Log.i(TAG, "Setting up floating window channel: $FLOATING_WINDOW_CHANNEL")
@@ -97,6 +113,40 @@ class MainActivity: FlutterActivity() {
                     Log.i(TAG, "Permission method not implemented: ${call.method}")
                     result.notImplemented()
                 }
+            }
+        }
+
+        // 剪贴板通道
+        clipboardChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CLIPBOARD_CHANNEL)
+        clipboardChannel.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "copyImage" -> {
+                    try {
+                        val path = call.argument<String>("path")
+                        if (path == null) {
+                            result.error("INVALID_PATH", "Path cannot be null", null)
+                            return@setMethodCallHandler
+                        }
+
+                        val file = File(path)
+                        if (!file.exists()) {
+                            result.error("FILE_NOT_FOUND", "File does not exist: $path", null)
+                            return@setMethodCallHandler
+                        }
+
+                        val uri = Uri.fromFile(file)
+                        val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newUri(contentResolver, "image", uri)
+                        clipboardManager.setPrimaryClip(clip)
+
+                        Log.d(TAG, "Image copied to clipboard: $path")
+                        result.success(null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error copying image", e)
+                        result.error("COPY_ERROR", e.message, null)
+                    }
+                }
+                else -> result.notImplemented()
             }
         }
         Log.i(TAG, "Method channels set up")
@@ -183,5 +233,9 @@ class MainActivity: FlutterActivity() {
                 pendingShowWindow = false
             }
         }
+    }
+
+    override fun onBackPressed() {
+        moveTaskToBack(true)
     }
 }

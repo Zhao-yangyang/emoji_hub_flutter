@@ -28,6 +28,15 @@ class MyApp extends StatelessWidget {
       routes: {
         '/floating_window': (context) => const FloatingWindowScreen(),
       },
+      onGenerateRoute: (settings) {
+        // 如果是从悬浮窗启动，直接显示悬浮窗页面
+        if (settings.name == '/floating_window') {
+          return MaterialPageRoute(
+            builder: (context) => const FloatingWindowScreen(),
+          );
+        }
+        return null;
+      },
     );
   }
 }
