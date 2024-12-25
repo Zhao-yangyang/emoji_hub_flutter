@@ -20,9 +20,12 @@ import androidx.core.app.NotificationCompat
 import io.flutter.embedding.android.FlutterView
 import io.flutter.embedding.engine.FlutterEngine
 import android.util.Log
-import android.util.DisplayMetrics
-import android.view.Display
 import android.graphics.Point
+import android.widget.ImageView
+import android.animation.ValueAnimator
+import android.view.animation.DecelerateInterpolator
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 
 class FloatingWindowService : Service() {
     private val TAG = "FloatingWindowService"
@@ -30,10 +33,20 @@ class FloatingWindowService : Service() {
     private var floatingView: View? = null
     private var params: WindowManager.LayoutParams? = null
     private var flutterContainer: FrameLayout? = null
-    private var isExpanded = true
+    private var isAnimating = false
+    
+    // 窗口状态枚举
+    enum class WindowState {
+        EXPANDED,    // 完整模式
+        MINIMIZED,   // 最小化模式
+        COLLAPSED    // 收缩模式
+    }
+    
+    private var currentState = WindowState.EXPANDED
     private var flutterEngine: FlutterEngine? = null
     private var flutterView: FlutterView? = null
-    private var isMinimized = false
+    private val SNAP_THRESHOLD = 24  // 吸附阈值（dp）
+    private val EDGE_THRESHOLD = 100 // 边缘检测阈值（dp）
     
     private val NOTIFICATION_CHANNEL_ID = "FloatingWindowService"
     private val NOTIFICATION_ID = 1
@@ -196,41 +209,15 @@ class FloatingWindowService : Service() {
     private fun setupButtons() {
         Log.d(TAG, "Setting up buttons")
         try {
-            // 关闭按钮改为最小化
-            floatingView?.findViewById<ImageButton>(R.id.btnClose)?.setOnClickListener {
+            // 最小化按钮
+            floatingView?.findViewById<ImageButton>(R.id.btnMinimize)?.setOnClickListener {
                 Log.d(TAG, "Minimize button clicked")
                 minimizeWindow()
             }
-
-            // 最小化图标点击恢复
-            floatingView?.findViewById<View>(R.id.minimizedIcon)?.setOnClickListener {
-                Log.d(TAG, "Minimized icon clicked")
-                restoreWindow()
-            }
-
-            // 展开按钮
-            floatingView?.findViewById<ImageButton>(R.id.btnExpand)?.setOnClickListener {
-                Log.d(TAG, "Expand button clicked")
-                toggleWindowSize(true)
-            }
-
-            // 收起按钮
-            floatingView?.findViewById<ImageButton>(R.id.btnCollapse)?.setOnClickListener {
-                Log.d(TAG, "Collapse button clicked")
-                toggleWindowSize(false)
-            }
-            Log.d(TAG, "Buttons set up successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error setting up buttons", e)
             e.printStackTrace()
         }
-    }
-
-    private fun toggleWindowSize(expand: Boolean) {
-        Log.d(TAG, "Toggling window size: $expand")
-        isExpanded = expand
-        flutterContainer?.visibility = if (expand) View.VISIBLE else View.GONE
-        windowManager?.updateViewLayout(floatingView, params)
     }
 
     private fun setupTouchListener() {
@@ -239,8 +226,9 @@ class FloatingWindowService : Service() {
         var initialTouchX: Float = 0f
         var initialTouchY: Float = 0f
         var isMoved = false
+        var lastClickTime = 0L
+        val DOUBLE_CLICK_TIME = 300L
 
-        // 为根视图和最小化图标都添加触摸监听
         val touchListener = View.OnTouchListener { view, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
@@ -249,106 +237,358 @@ class FloatingWindowService : Service() {
                     initialTouchX = event.rawX
                     initialTouchY = event.rawY
                     isMoved = false
-                    // 让Flutter视图可以接收触摸事件
-                    params?.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                            WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
-                    windowManager?.updateViewLayout(floatingView, params)
-                    false
+                    true
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val deltaX = event.rawX - initialTouchX
                     val deltaY = event.rawY - initialTouchY
                     if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
                         isMoved = true
-                        params?.x = (initialX + deltaX).toInt()
-                        params?.y = (initialY + deltaY).toInt()
+                        params?.apply {
+                            x = (initialX + deltaX).toInt()
+                            y = (initialY + deltaY).toInt()
+                        }
                         windowManager?.updateViewLayout(floatingView, params)
+                        if (currentState == WindowState.MINIMIZED) {
+                            updateEdgeState()
+                        }
                     }
-                    isMoved
+                    true
                 }
                 MotionEvent.ACTION_UP -> {
                     if (!isMoved) {
-                        // 如果没有移动，恢复正常的触摸事件处理
-                        params?.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                        windowManager?.updateViewLayout(floatingView, params)
-                        // 如果是最小化图标被点击，则恢复���口
-                        if (isMinimized && view.id == R.id.minimizedIcon) {
-                            restoreWindow()
+                        val currentTime = System.currentTimeMillis()
+                        if (currentTime - lastClickTime < DOUBLE_CLICK_TIME) {
+                            // 双击展开
+                            if (currentState != WindowState.EXPANDED) {
+                                restoreWindow()
+                            }
+                        } else {
+                            // 单击处理
+                            when (currentState) {
+                                WindowState.MINIMIZED -> {
+                                    // 检查是否点击了箭头区域
+                                    val arrowAreaWidth = dpToPx(48)
+                                    val totalWidth = params?.width ?: 0
+                                    if (event.x >= totalWidth - arrowAreaWidth) {
+                                        handleArrowClick()
+                                    }
+                                }
+                                WindowState.COLLAPSED -> {
+                                    handleArrowClick()
+                                }
+                                else -> {}
+                            }
                         }
-                        false
+                        lastClickTime = currentTime
                     } else {
-                        // 如果移动了，消费这个事件
-                        true
+                        // 处理拖动结束
+                        when (currentState) {
+                            WindowState.MINIMIZED -> {
+                                checkAndSnapToEdge()
+                            }
+                            WindowState.COLLAPSED -> {
+                                snapToEdge(true)
+                            }
+                            else -> {}
+                        }
                     }
+                    true
                 }
                 else -> false
             }
         }
 
-        // 为根视图添加触摸监听
-        floatingView?.findViewById<CardView>(R.id.root)?.setOnTouchListener(touchListener)
-        
-        // 为最小化图标添加触摸监听
-        floatingView?.findViewById<View>(R.id.minimizedIcon)?.setOnTouchListener(touchListener)
-
-        // 为Flutter容器添加触摸监听
-        flutterContainer?.setOnTouchListener { _, event ->
-            // 始终允许Flutter处理触摸事件
-            false
-        }
+        // 为可拖动区域添加触摸监听器
+        floatingView?.findViewById<View>(R.id.touchArea)?.setOnTouchListener(touchListener)
+        floatingView?.findViewById<View>(R.id.dragHandle)?.setOnTouchListener(touchListener)
     }
 
     private fun minimizeWindow() {
+        if (isAnimating || currentState == WindowState.MINIMIZED) return
+        
         try {
-            isMinimized = true
             val screenSize = getScreenSize()
+            isAnimating = true
             
-            params?.apply {
-                width = 32
-                height = 32
-                x = screenSize.x - width - 16
-                y = screenSize.y / 2 - height / 2
-                flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+            // 保存当前尺寸
+            val startWidth = params?.width ?: 0
+            val startHeight = params?.height ?: 0
+            val startX = params?.x ?: 0
+            val startY = params?.y ?: 0
+            
+            // 设置目标尺寸
+            val targetWidth = dpToPx(160)
+            val targetHeight = dpToPx(48)
+            val targetX = screenSize.x - targetWidth - dpToPx(16)
+            val targetY = screenSize.y / 3
+            
+            // 创建动画
+            val sizeAnimator = ValueAnimator.ofFloat(0f, 1f)
+            sizeAnimator.duration = 250
+            sizeAnimator.interpolator = DecelerateInterpolator()
+            
+            sizeAnimator.addUpdateListener { animation ->
+                val progress = animation.animatedValue as Float
+                params?.apply {
+                    width = lerp(startWidth, targetWidth, progress)
+                    height = lerp(startHeight, targetHeight, progress)
+                    x = lerp(startX, targetX, progress)
+                    y = lerp(startY, targetY, progress)
+                }
+                windowManager?.updateViewLayout(floatingView, params)
             }
             
-            // 更新UI
-            floatingView?.apply {
-                findViewById<View>(R.id.contentContainer)?.visibility = View.GONE
-                findViewById<View>(R.id.minimizedIcon)?.visibility = View.VISIBLE
-            }
+            sizeAnimator.addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    isAnimating = false
+                    currentState = WindowState.MINIMIZED
+                    updateViewVisibility()
+                    updateEdgeState()
+                }
+            })
             
-            // 更新窗口布局
-            windowManager?.updateViewLayout(floatingView, params)
-            Log.d(TAG, "Window minimized successfully")
+            // 开始动画
+            sizeAnimator.start()
+            
         } catch (e: Exception) {
             Log.e(TAG, "Error minimizing window", e)
+            isAnimating = false
         }
     }
-    
-    private fun restoreWindow() {
-        try {
-            isMinimized = false
-            val screenSize = getScreenSize()
-            
-            params?.apply {
-                width = (screenSize.x * 0.5).toInt()
-                height = (screenSize.y * 0.4).toInt()
-                x = (screenSize.x - width) / 2
-                y = (screenSize.y - height) / 2
-                flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+
+    private fun updateViewVisibility() {
+        floatingView?.apply {
+            when (currentState) {
+                WindowState.EXPANDED -> {
+                    findViewById<View>(R.id.expandedContainer)?.visibility = View.VISIBLE
+                    findViewById<View>(R.id.minimizedContainer)?.visibility = View.GONE
+                }
+                WindowState.MINIMIZED -> {
+                    findViewById<View>(R.id.expandedContainer)?.visibility = View.GONE
+                    findViewById<View>(R.id.minimizedContainer)?.visibility = View.VISIBLE
+                    findViewById<View>(R.id.minimizedContent)?.visibility = View.VISIBLE
+                    findViewById<View>(R.id.collapsedContent)?.visibility = View.GONE
+                }
+                WindowState.COLLAPSED -> {
+                    findViewById<View>(R.id.expandedContainer)?.visibility = View.GONE
+                    findViewById<View>(R.id.minimizedContainer)?.visibility = View.VISIBLE
+                    findViewById<View>(R.id.minimizedContent)?.visibility = View.GONE
+                    findViewById<View>(R.id.collapsedContent)?.visibility = View.VISIBLE
+                }
             }
-            
-            // 更新UI
-            floatingView?.apply {
-                findViewById<View>(R.id.contentContainer)?.visibility = View.VISIBLE
-                findViewById<View>(R.id.minimizedIcon)?.visibility = View.GONE
+        }
+    }
+
+    private fun updateEdgeState() {
+        if (currentState != WindowState.MINIMIZED) return
+        
+        val screenSize = getScreenSize()
+        val x = params?.x ?: 0
+        val width = params?.width ?: 0
+        val distanceToLeft = x
+        val distanceToRight = screenSize.x - (x + width)
+        
+        // 获取箭头图标
+        val arrowIcon = floatingView?.findViewById<ImageView>(R.id.arrowIcon)
+        
+        // 根据距离边缘的距离显示或隐藏箭头
+        if (distanceToLeft < dpToPx(EDGE_THRESHOLD) || distanceToRight < dpToPx(EDGE_THRESHOLD)) {
+            arrowIcon?.apply {
+                visibility = View.VISIBLE
+                rotation = if (distanceToLeft < distanceToRight) 180f else 0f
             }
-            
-            // 更新窗口布局
+        } else {
+            arrowIcon?.visibility = View.GONE
+        }
+    }
+
+    private fun handleArrowClick() {
+        if (isAnimating) return
+        
+        when (currentState) {
+            WindowState.MINIMIZED -> {
+                collapseToArrow()
+            }
+            WindowState.COLLAPSED -> {
+                expandToMinimized()
+            }
+            else -> {}
+        }
+    }
+
+    private fun collapseToArrow() {
+        if (isAnimating) return
+        
+        val screenSize = getScreenSize()
+        val currentX = params?.x ?: 0
+        val currentWidth = params?.width ?: 0
+        val distanceToLeft = currentX
+        val distanceToRight = screenSize.x - (currentX + currentWidth)
+        
+        // 确定目标位置
+        val targetX = if (distanceToLeft < distanceToRight) 0 else screenSize.x - dpToPx(48)
+        
+        isAnimating = true
+        
+        // 创建动画
+        val widthAnimator = ValueAnimator.ofInt(currentWidth, dpToPx(48))
+        val positionAnimator = ValueAnimator.ofInt(currentX, targetX)
+        
+        widthAnimator.addUpdateListener { animation ->
+            params?.width = animation.animatedValue as Int
             windowManager?.updateViewLayout(floatingView, params)
-            Log.d(TAG, "Window restored successfully")
+        }
+        
+        positionAnimator.addUpdateListener { animation ->
+            params?.x = animation.animatedValue as Int
+            windowManager?.updateViewLayout(floatingView, params)
+        }
+        
+        widthAnimator.duration = 200
+        positionAnimator.duration = 200
+        
+        widthAnimator.addListener(object : AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: Animator) {
+                currentState = WindowState.COLLAPSED
+                updateViewVisibility()
+                isAnimating = false
+                
+                // ���置箭头方向
+                floatingView?.findViewById<ImageView>(R.id.collapsedIcon)?.apply {
+                    rotation = if (targetX == 0) 0f else 180f
+                }
+            }
+        })
+        
+        widthAnimator.start()
+        positionAnimator.start()
+    }
+
+    private fun expandToMinimized() {
+        if (isAnimating) return
+        
+        val currentX = params?.x ?: 0
+        isAnimating = true
+        
+        // 只改变宽度，保持x位置不变
+        val widthAnimator = ValueAnimator.ofInt(dpToPx(48), dpToPx(160))
+        
+        widthAnimator.addUpdateListener { animation ->
+            params?.width = animation.animatedValue as Int
+            windowManager?.updateViewLayout(floatingView, params)
+        }
+        
+        widthAnimator.duration = 200
+        
+        widthAnimator.addListener(object : AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: Animator) {
+                currentState = WindowState.MINIMIZED
+                updateViewVisibility()
+                updateEdgeState()
+                isAnimating = false
+            }
+        })
+        
+        widthAnimator.start()
+    }
+
+    private fun checkAndSnapToEdge() {
+        val screenSize = getScreenSize()
+        val x = params?.x ?: 0
+        val width = params?.width ?: 0
+        val distanceToLeft = x
+        val distanceToRight = screenSize.x - (x + width)
+        
+        if (distanceToLeft < dpToPx(EDGE_THRESHOLD) || distanceToRight < dpToPx(EDGE_THRESHOLD)) {
+            val targetX = if (distanceToLeft < distanceToRight) 0 else screenSize.x - width
+            snapToEdge(true, targetX)
+        }
+    }
+
+    private fun snapToEdge(animate: Boolean, targetX: Int? = null) {
+        val screenSize = getScreenSize()
+        val width = params?.width ?: 0
+        val currentX = params?.x ?: 0
+        
+        val finalTargetX = targetX ?: if (currentX < screenSize.x / 2) 0 else screenSize.x - width
+        
+        if (animate) {
+            val animator = ValueAnimator.ofInt(currentX, finalTargetX)
+            animator.duration = 150
+            animator.interpolator = DecelerateInterpolator()
+            
+            animator.addUpdateListener { animation ->
+                params?.x = animation.animatedValue as Int
+                windowManager?.updateViewLayout(floatingView, params)
+            }
+            
+            animator.start()
+        } else {
+            params?.x = finalTargetX
+            windowManager?.updateViewLayout(floatingView, params)
+        }
+    }
+
+    // 添加线性插值辅助方法
+    private fun lerp(start: Int, end: Int, fraction: Float): Int {
+        return (start + (end - start) * fraction).toInt()
+    }
+
+    // 添加dp转px的辅助方法
+    private fun dpToPx(dp: Int): Int {
+        return (dp * resources.displayMetrics.density).toInt()
+    }
+
+    private fun restoreWindow() {
+        if (isAnimating || currentState == WindowState.EXPANDED) return
+        
+        try {
+            val screenSize = getScreenSize()
+            isAnimating = true
+            
+            // 保存当前尺寸
+            val startWidth = params?.width ?: 0
+            val startHeight = params?.height ?: 0
+            val startX = params?.x ?: 0
+            val startY = params?.y ?: 0
+            
+            // 设置目标尺寸
+            val targetWidth = (screenSize.x * 0.5).toInt()
+            val targetHeight = (screenSize.y * 0.4).toInt()
+            val targetX = (screenSize.x - targetWidth) / 2
+            val targetY = (screenSize.y - targetHeight) / 2
+            
+            // 创建动画
+            val sizeAnimator = ValueAnimator.ofFloat(0f, 1f)
+            sizeAnimator.duration = 250
+            sizeAnimator.interpolator = DecelerateInterpolator()
+            
+            sizeAnimator.addUpdateListener { animation ->
+                val progress = animation.animatedValue as Float
+                params?.apply {
+                    width = lerp(startWidth, targetWidth, progress)
+                    height = lerp(startHeight, targetHeight, progress)
+                    x = lerp(startX, targetX, progress)
+                    y = lerp(startY, targetY, progress)
+                }
+                windowManager?.updateViewLayout(floatingView, params)
+            }
+            
+            sizeAnimator.addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    isAnimating = false
+                    currentState = WindowState.EXPANDED
+                    updateViewVisibility()
+                }
+            })
+            
+            // 开始动画
+            sizeAnimator.start()
+            
         } catch (e: Exception) {
             Log.e(TAG, "Error restoring window", e)
+            isAnimating = false
         }
     }
 

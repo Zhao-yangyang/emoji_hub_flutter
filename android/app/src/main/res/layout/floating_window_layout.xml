@@ -1,43 +1,87 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/root"
     android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:alpha="0.95"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="4dp">
+    android:layout_height="wrap_content">
 
-    <!-- 最小化时显示的图标 -->
-    <ImageView
-        android:id="@+id/minimizedIcon"
-        android:layout_width="32dp"
-        android:layout_height="32dp"
-        android:src="@drawable/ic_minimized_icon"
-        android:visibility="gone"
-        android:padding="4dp"
-        android:background="@drawable/circle_background"
-        android:elevation="4dp"/>
-
-    <!-- 主要内容容器 -->
-    <LinearLayout
-        android:id="@+id/contentContainer"
+    <!-- 完整模式的内容 -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/expandedContainer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        app:cardCornerRadius="16dp"
+        app:cardElevation="4dp"
+        app:cardBackgroundColor="#1F1F1F">
 
-        <!-- 顶部工具栏 -->
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:background="@color/purple_500"
-            android:gravity="center_vertical"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- 顶部工具栏 -->
+            <LinearLayout
+                android:id="@+id/dragHandle"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:background="@color/purple_500"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="12dp"
+                android:paddingEnd="8dp">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@mipmap/ic_launcher" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:text="EmojiHub"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp" />
+
+                <ImageButton
+                    android:id="@+id/btnMinimize"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_menu_close_clear_cancel"
+                    android:tint="#FFFFFF" />
+            </LinearLayout>
+
+            <!-- Flutter容器 -->
+            <FrameLayout
+                android:id="@+id/flutterContainer"
+                android:layout_width="280dp"
+                android:layout_height="320dp"
+                android:background="#FFFFFF" />
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- 最小化和收缩状态的容器 -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/minimizedContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:visibility="gone"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="4dp"
+        app:cardBackgroundColor="#1F1F1F">
+
+        <!-- 最小化状态内容 -->
+        <LinearLayout
+            android:id="@+id/minimizedContent"
+            android:layout_width="160dp"
+            android:layout_height="match_parent"
             android:orientation="horizontal"
+            android:gravity="center_vertical"
             android:paddingStart="12dp"
-            android:paddingEnd="8dp">
+            android:paddingEnd="12dp">
 
             <ImageView
-                android:id="@+id/ivLogo"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:src="@mipmap/ic_launcher" />
@@ -45,56 +89,47 @@
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
                 android:layout_weight="1"
+                android:layout_marginStart="8dp"
                 android:text="EmojiHub"
-                android:textColor="@android:color/white"
-                android:textSize="14sp" />
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
 
-            <ImageButton
-                android:id="@+id/btnClose"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:padding="4dp"
-                android:src="@android:drawable/ic_menu_more"
-                android:tint="@android:color/white" />
+            <ImageView
+                android:id="@+id/arrowIcon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginStart="8dp"
+                android:src="@drawable/ic_arrow"
+                android:tint="#FFFFFF"
+                android:padding="4dp" />
         </LinearLayout>
 
-        <!-- 内容区域 -->
+        <!-- 收缩状态内容 -->
         <FrameLayout
-            android:id="@+id/flutterContainer"
-            android:layout_width="280dp"
-            android:layout_height="320dp"
-            android:background="@android:color/white" />
+            android:id="@+id/collapsedContent"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:visibility="gone">
 
-        <!-- 底部工具栏 -->
-        <LinearLayout
+            <ImageView
+                android:id="@+id/collapsedIcon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_arrow"
+                android:tint="#FFFFFF" />
+        </FrameLayout>
+
+        <!-- 触摸区域覆盖整个容器 -->
+        <View
+            android:id="@+id/touchArea"
             android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:background="@color/purple_500"
-            android:gravity="center"
-            android:orientation="horizontal"
-            android:padding="4dp">
-
-            <ImageButton
-                android:id="@+id/btnExpand"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:padding="4dp"
-                android:src="@android:drawable/arrow_up_float"
-                android:tint="@android:color/white" />
-
-            <ImageButton
-                android:id="@+id/btnCollapse"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:layout_marginStart="16dp"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:padding="4dp"
-                android:src="@android:drawable/arrow_down_float"
-                android:tint="@android:color/white" />
-        </LinearLayout>
-    </LinearLayout>
-</androidx.cardview.widget.CardView> 
+            android:layout_height="match_parent"
+            android:background="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true" />
+    </androidx.cardview.widget.CardView>
+</FrameLayout> 

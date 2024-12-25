@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 外层阴影 -->
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="#20000000"/>
+            <padding android:bottom="2dp"/>
+        </shape>
+    </item>
+    <!-- 内层白色背景 -->
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="#FFFFFF"/>
+        </shape>
+    </item>
+</layer-list> 
