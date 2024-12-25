@@ -9,7 +9,7 @@ import 'package:path/path.dart' as path;
 import 'package:share_plus/share_plus.dart';
 
 class FloatingWindowScreen extends StatefulWidget {
-  const FloatingWindowScreen({Key? key}) : super(key: key);
+  const FloatingWindowScreen({super.key});
 
   @override
   State<FloatingWindowScreen> createState() => _FloatingWindowScreenState();

@@ -18,7 +18,7 @@ import 'package:emoji_hub_flutter/core/services/floating_window_service.dart';
 import 'package:emoji_hub_flutter/core/services/permission_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();

@@ -37,11 +37,12 @@ class EmojiRepository {
     try {
       // 复制文件到应用目录
       final emojisDir = await _getEmojisDirectory();
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}${extension(path)}';
-      final newPath = '${emojisDir}/$fileName';
-      
+      final fileName =
+          '${DateTime.now().millisecondsSinceEpoch}${extension(path)}';
+      final newPath = '$emojisDir/$fileName';
+
       await File(path).copy(newPath);
-      
+
       // 存储相对路径
       final relativePath = 'emojis/$fileName';
 

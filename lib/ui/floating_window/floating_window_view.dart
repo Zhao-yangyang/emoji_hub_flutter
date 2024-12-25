@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:emoji_hub_flutter/core/services/floating_window_service.dart';
 
 class FloatingWindowView extends StatelessWidget {
   const FloatingWindowView({super.key});

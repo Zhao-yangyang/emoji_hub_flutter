@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:emoji_hub_flutter/core/routes/routes.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'ui/screens/home_screen.dart';
@@ -12,7 +11,7 @@ void main() async {
 
   final dbService = DatabaseService();
   await dbService.cleanupDatabase();
-  
+
   runApp(const ProviderScope(child: MyApp()));
 }
 
